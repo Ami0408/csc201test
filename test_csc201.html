@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSC 201: Comprehensive CBT (Lectures 1-7)</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #27ae60;
+            --danger: #c0392b;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            color: var(--dark);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+        }
+
+        .question-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        /* Scrollbar styling */
+        .question-grid::-webkit-scrollbar { width: 6px; }
+        .question-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            aspect-ratio: 1;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover { background: rgba(255,255,255,0.3); }
+        .nav-btn.active { background: var(--secondary); border: 2px solid white; transform: scale(1.1); }
+        .nav-btn.answered { background: #7f8c8d; }
+        
+        /* Review Mode Colors */
+        .nav-btn.correct-nav { background: var(--success) !important; }
+        .nav-btn.wrong-nav { background: var(--danger) !important; }
+
+        /* Main Area */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .timer-box {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--danger);
+            background: #fcebeb;
+            padding: 5px 15px;
+            border-radius: 5px;
+        }
+
+        .question-card {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            flex: 1;
+        }
+
+        .q-text {
+            font-size: 1.3rem;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-label {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+        }
+
+        .option-label:hover { background: #f9f9f9; border-color: #bdc3c7; }
+        
+        .option-label.selected {
+            border-color: var(--secondary);
+            background-color: #ebf5fb;
+        }
+
+        .option-label input { margin-right: 15px; transform: scale(1.2); }
+
+        /* Review Styles */
+        .option-label.correct-answer {
+            border-color: var(--success);
+            background-color: #d4efdf;
+        }
+        .option-label.wrong-answer {
+            border-color: var(--danger);
+            background-color: #fadbd8;
+        }
+        .explanation {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fcf3cf;
+            border-left: 4px solid #f1c40f;
+            display: none;
+        }
+
+        /* Footer Controls */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+
+        .btn-secondary { background: #95a5a6; color: white; }
+        .btn-primary { background: var(--secondary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+        }
+        .score-circle {
+            width: 150px; height: 150px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-header">
+        <h3>Question Navigator</h3>
+        <p><span id="answeredCount">0</span>/100 Answered</p>
+    </div>
+    <div class="question-grid" id="navGrid">
+        </div>
+</div>
+
+<div class="main-content">
+    <div class="top-bar">
+        <div>
+            <h2 style="margin:0;">CSC 201 Mock Exam</h2>
+            <small>Lectures 1 - 7 (Variables to Dictionaries)</small>
+        </div>
+        <div class="timer-box" id="timer">45:00</div>
+    </div>
+
+    <div class="question-card">
+        <div class="q-text" id="questionText">Loading...</div>
+        <div class="options-list" id="optionsList"></div>
+        <div class="explanation" id="explanationBox"></div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-secondary" id="prevBtn" onclick="move(-1)">Previous</button>
+        <button class="btn btn-primary" id="nextBtn" onclick="move(1)">Next</button>
+        <button class="btn btn-success" id="submitBtn" onclick="submitTest()">Submit Exam</button>
+        <button class="btn btn-secondary" id="reviewBtn" onclick="startReview()" style="display:none;">Review Answers</button>
+    </div>
+</div>
+
+<div class="modal" id="resultModal">
+    <div class="modal-content">
+        <h2>Test Submitted!</h2>
+        <div class="score-circle" id="scoreCircle">0%</div>
+        <p id="scoreText">You scored 0 out of 100</p>
+        <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+            <button class="btn btn-primary" onclick="closeModalAndReview()">Review Questions</button>
+            <button class="btn btn-secondary" onclick="location.reload()">Retake Test</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- DATABASE OF 100 QUESTIONS ---
+    const db = [
+        // LECTURE 1: Intro (Questions 1-10)
+        { t: "Who developed Python?", o: ["Dennis Ritchie", "Guido van Rossum", "James Gosling", "Bjarne Stroustrup"], a: 1 },
+        { t: "According to the slides, when was Python 2.0 released?", o: ["Dec 2008", "Oct 2000", "Late 80s", "Jan 1999"], a: 1 },
+        { t: "Which version of Python was stated as the 'most stable' for this class?", o: ["Python 3.0", "Python 3.6", "Python 2.7", "Python 2.5"], a: 2 },
+        { t: "Python is described as which type of language?", o: ["Low-level", "Compiled only", "Interpreted & High-level", "Assembly"], a: 2 },
+        { t: "Which of the following is NOT a feature of Python mentioned?", o: ["Open Source", "Platform Independent", "Static Typing", "Dynamic Typing"], a: 2 },
+        { t: "Python supports which programming paradigms?", o: ["Structured only", "Object-Oriented only", "Functional only", "Multiple paradigms"], a: 3 },
+        { t: "Which symbol initiates a comment in Python?", o: ["//", "/*", "#", "--"], a: 2 },
+        { t: "What is the result of 'print' not being equivalent to 'PRINT'?", o: ["Syntax Error", "Case Sensitivity", "Logical Error", "Runtime Warning"], a: 1 },
+        { t: "Indentation in Python is:", o: ["Optional", "Used for comments", "Mandatory for blocks", "Recommended but not required"], a: 2 },
+        { t: "Which tool is NOT listed as a Python IDE in the slides?", o: ["IDLE", "Eclipse", "Photoshop", "Netbeans"], a: 2 },
+
+        // LECTURE 2: Variables & I/O (Questions 11-25)
+        { t: "Variables in Python are:", o: ["Statically typed", "Dynamic", "Constant", "Fixed size"], a: 1 },
+        { t: "When does Python assign memory to a variable?", o: ["At compilation", "At declaration", "When initialized", "Never"], a: 2 },
+        { t: "What is the output of `type(3+4j)`?", o: ["int", "float", "complex", "tuple"], a: 2 },
+        { t: "Which function reads input from the user (Python 2.7)?", o: ["input()", "get()", "raw_input()", "scan()"], a: 2 },
+        { t: "What type does `raw_input()` return?", o: ["Integer", "String", "Float", "Boolean"], a: 1 },
+        { t: "To convert a string '25' to an integer, use:", o: ["str('25')", "float('25')", "int('25')", "cast('25')"], a: 2 },
+        { t: "Which command shows attributes of an object?", o: ["help()", "dir()", "list()", "show()"], a: 1 },
+        { t: "What does `print name, age` do in Python 2.7?", o: ["Prints with a comma", "Prints on new lines", "Prints with a space", "Error"], a: 2 },
+        { t: "Which function displays documentation?", o: ["doc()", "man()", "help()", "info()"], a: 2 },
+        { t: "Variable names cannot start with:", o: ["A letter", "An underscore", "A number", "Upper case"], a: 2 },
+        { t: "The `bool` class is a subclass of:", o: ["float", "str", "int", "object"], a: 2 },
+        { t: "If `a = 10` and `b = 5`, what is `print a, b` output?", o: ["10, 5", "10 5", "105", "Error"], a: 1 },
+        { t: "Interactive mode prompt is usually:", o: ">>>", o: ["...", ">>>", "$$$", "###"], a: 1 },
+        { t: "Which is a valid complex number in Python?", o: ["3 + 4i", "3 + 4j", "Complex(3,4)", "3 # 4"], a: 1 },
+        { t: "What happens if you use a Python keyword as a variable name?", o: ["It works fine", "Syntax Error", "Warning", "It overwrites the keyword"], a: 1 },
+
+        // LECTURE 3: Operators & Control Structures (Questions 26-45)
+        { t: "What is `10 // 3`?", o: ["3.33", "3", "3.0", "4"], a: 1 },
+        { t: "What is `10.0 // 3`?", o: ["3", "3.33", "3.0", "4.0"], a: 2 },
+        { t: "Operator `**` represents:", o: ["Multiplication", "Pointer", "Exponentiation", "Modulus"], a: 2 },
+        { t: "What is `3 ** 2 ** 3`?", o: ["729", "6561", "18", "216"], a: 1 },
+        { t: "The result of `5 % 3` is:", o: ["1", "2", "3", "1.66"], a: 1 },
+        { t: "`range(1, 5)` returns:", o: ["[1,2,3,4,5]", "[0,1,2,3,4]", "[1,2,3,4]", "[1,5]"], a: 2 },
+        { t: "`range(5)` returns:", o: ["[1,2,3,4,5]", "[0,1,2,3,4]", "[0,1,2,3,4,5]", "Error"], a: 1 },
+        { t: "Which statement stops a loop immediately?", o: ["stop", "exit", "break", "continue"], a: 2 },
+        { t: "Syntax for `if` statement:", o: ["if condition { }", "if (condition) then", "if condition:", "check condition:"], a: 2 },
+        { t: "`elif` stands for:", o: ["else if", "element if", "early if", "error if"], a: 0 },
+        { t: "What does `range(10, 0, -1)` do?", o: ["Counts 0 to 10", "Counts 10 down to 1", "Counts 10 down to 0", "Error"], a: 1 },
+        { t: "Logical AND in Python is:", o: ["&&", "and", "&", "AND"], a: 1 },
+        { t: "Result of `True and False` is:", o: ["True", "False", "None", "Error"], a: 1 },
+        { t: "Which loop is best for iterating over a sequence?", o: ["while", "do-while", "for", "repeat"], a: 2 },
+        { t: "Infinite loops occur when:", o: ["Condition never becomes False", "Condition is always False", "Using for loops", "Using break"], a: 0 },
+        { t: "The `else` clause in a `while` loop executes:", o: ["Never", "Always", "When loop finishes normally", "When break is called"], a: 2 },
+        { t: "Operator precedence: which is highest?", o: ["+", "*", "**", "and"], a: 2 },
+        { t: "`x += 1` is equivalent to:", o: ["x = x + 1", "x++", "x = 1", "x + 1"], a: 0 },
+        { t: "In `range(start, stop, step)`, if step is negative:", o: ["Error", "Counts backwards", "Counts normally", "Returns empty"], a: 1 },
+        { t: "What is `not True`?", o: ["True", "False", "1", "0"], a: 1 },
+
+        // LECTURE 4: Functions (Questions 46-55)
+        { t: "Keyword to define a function:", o: ["function", "def", "define", "func"], a: 1 },
+        { t: "Blocks of code in functions are defined by:", o: ["Brackets {}", "Indentation", "Keywords", "Semicolons"], a: 1 },
+        { t: "Variables defined inside a function are:", o: ["Global", "Local", "Static", "Public"], a: 1 },
+        { t: "To modify a global variable inside a function, use:", o: ["extern", "global", "super", "var"], a: 1 },
+        { t: "A function that returns no value returns:", o: ["0", "void", "None", "Null"], a: 2 },
+        { t: "Arguments in function definition are called:", o: ["Parameters", "Inputs", "Factors", "Vars"], a: 0 },
+        { t: "Which built-in function finds the length?", o: ["size()", "count()", "len()", "length()"], a: 2 },
+        { t: "`cmp(x, y)` returns 0 if:", o: ["x > y", "x < y", "x == y", "x != y"], a: 2 },
+        { t: "`pow(2, 3)` is equal to:", o: ["6", "5", "8", "9"], a: 2 },
+        { t: "Can a function call itself?", o: ["No", "Yes (Recursion)", "Only in classes", "Yes (Looping)"], a: 1 },
+
+        // LECTURE 5: Strings (Questions 56-70)
+        { t: "Strings in Python are:", o: ["Mutable", "Immutable", "Arrays", "Lists"], a: 1 },
+        { t: "Index of the first character in a string:", o: ["1", "0", "-1", "Start"], a: 1 },
+        { t: "Index of the last character can be accessed by:", o: ["0", "len()", "-1", "end"], a: 2 },
+        { t: "Slicing `s[1:4]` includes indices:", o: ["1, 2, 3, 4", "1, 2, 3", "2, 3, 4", "1, 4"], a: 1 },
+        { t: "Escape sequence for new line:", o: ["\\t", "\\n", "\\r", "\\l"], a: 1 },
+        { t: "To create a raw string, prefix with:", o: ["r", "raw", "u", "s"], a: 0 },
+        { t: "Triple quotes `'''` are used for:", o: ["Comments", "Multiline strings", "Docstrings", "All of the above"], a: 3 },
+        { t: "`'Hello' + 'World'` results in:", o: ["Hello World", "HelloWorld", "Error", "None"], a: 1 },
+        { t: "`'A' * 3` results in:", o: ["AAA", "A3", "Error", "3A"], a: 0 },
+        { t: "Method to convert to uppercase:", o: ["toUpper()", "upper()", "cap()", "uppercase()"], a: 1 },
+        { t: "`'abc'.find('b')` returns:", o: ["True", "1", "2", "0"], a: 1 },
+        { t: "`strip()` method removes:", o: ["All spaces", "Leading/Trailing whitespace", "Newlines only", "Tabs"], a: 1 },
+        { t: "`ord('A')` returns:", o: ["Character A", "ASCII/Unicode value", "Boolean", "Type"], a: 1 },
+        { t: "String formatting: `%d` is for:", o: ["Double", "Decimal/Integer", "Dictionary", "Data"], a: 1 },
+        { t: "`'Hello'.replace('l', 'p')` returns:", o: ["Heppo", "Helpo", "Heplo", "Error"], a: 0 },
+
+        // LECTURE 6: Lists (Questions 71-85)
+        { t: "Lists are defined using:", o: ["()", "[]", "{}", "<>"], a: 1 },
+        { t: "Are lists mutable?", o: ["Yes", "No", "Sometimes", "Only with ints"], a: 0 },
+        { t: "Method to add an item to the end:", o: ["push()", "add()", "append()", "insert()"], a: 2 },
+        { t: "To remove the last item:", o: ["delete()", "remove()", "pop()", "end()"], a: 2 },
+        { t: "`len([1, 2, [3, 4]])` is:", o: ["4", "3", "2", "Error"], a: 1 },
+        { t: "To sort a list `L` in-place:", o: ["L.sort()", "sorted(L)", "order(L)", "L.order()"], a: 0 },
+        { t: "`[1, 2] + [3]` results in:", o: ["[1, 2, 3]", "[1, 2, [3]]", "Error", "123"], a: 0 },
+        { t: "List comprehension syntax:", o: ["{x for x in L}", "[x for x in L]", "(x for x in L)", "Loop x in L"], a: 1 },
+        { t: "`L.extend([4,5])` does what?", o: ["Adds [4,5] as one item", "Adds 4 and 5 individually", "Replaces L", "Error"], a: 1 },
+        { t: "To delete index 2:", o: ["remove(2)", "del L[2]", "erase(2)", "L[2].delete"], a: 1 },
+        { t: "Can lists contain different types?", o: ["No", "Yes", "Only numbers", "Only strings"], a: 1 },
+        { t: "Negative index `-2` accesses:", o: ["First element", "Second element", "Second to last", "Error"], a: 2 },
+        { t: "`[0] * 3` returns:", o: ["[0, 0, 0]", "[3]", "000", "3"], a: 0 },
+        { t: "Checking membership in a list:", o: ["has", "exists", "in", "contains"], a: 2 },
+        { t: "Slicing `L[:]` creates:", o: ["Empty list", "Copy of L", "Error", "Last item"], a: 1 },
+
+        // LECTURE 7: Tuples & Dictionaries (Questions 86-100)
+        { t: "Tuples are defined using:", o: ["[]", "()", "{}", "<>"], a: 1 },
+        { t: "Main difference between List and Tuple:", o: ["Tuple is immutable", "List is immutable", "Tuple is slower", "List cannot hold strings"], a: 0 },
+        { t: "Can a tuple contain a list?", o: ["No", "Yes", "Error", "Only if empty"], a: 1 },
+        { t: "Which method works for tuples?", o: ["append()", "sort()", "count()", "pop()"], a: 2 },
+        { t: "Dictionaries store data as:", o: ["Arrays", "Key-Value pairs", "Ordered Lists", "Tuples"], a: 1 },
+        { t: "Dictionaries are defined using:", o: ["[]", "()", "{}", "<>"], a: 2 },
+        { t: "To access value for key 'k':", o: ["D('k')", "D['k']", "D.k", "D->k"], a: 1 },
+        { t: "Are dictionaries ordered (in Python 2.7)?", o: ["Yes", "No", "Sorted by Key", "Sorted by Value"], a: 1 },
+        { t: "`D.keys()` returns:", o: ["List of values", "List of keys", "List of tuples", "String"], a: 1 },
+        { t: "`del D['k']` does what?", o: ["Deletes dictionary", "Deletes entry with key 'k'", "Deletes value 'k'", "Error"], a: 1 },
+        { t: "Keys in a dictionary must be:", o: ["Mutable", "Immutable", "Integers only", "Strings only"], a: 1 },
+        { t: "Can you slice a dictionary?", o: ["Yes", "No", "Only keys", "Only values"], a: 1 },
+        { t: "To merge dict B into A:", o: ["A.add(B)", "A.append(B)", "A.update(B)", "A.merge(B)"], a: 2 },
+        { t: "`len(D)` returns:", o: ["Bytes", "Number of pairs", "Sum of keys", "0"], a: 1 },
+        { t: "`'k' in D` checks for:", o: ["Value existence", "Key existence", "Both", "Index"], a: 1 }
+    ];
+
+    // Shuffle logic can be added, but keeping ordered for "Lecture" flow
+    let questions = db; 
+    let currentQ = 0;
+    let userAnswers = new Array(100).fill(null);
+    let timeLeft = 45 * 60; // 45 minutes
+    let reviewMode = false;
+    let timerInterval;
+
+    const dom = {
+        grid: document.getElementById('navGrid'),
+        text: document.getElementById('questionText'),
+        opts: document.getElementById('optionsList'),
+        expl: document.getElementById('explanationBox'),
+        prev: document.getElementById('prevBtn'),
+        next: document.getElementById('nextBtn'),
+        submit: document.getElementById('submitBtn'),
+        review: document.getElementById('reviewBtn'),
+        timer: document.getElementById('timer'),
+        count: document.getElementById('answeredCount'),
+        modal: document.getElementById('resultModal'),
+        scoreCir: document.getElementById('scoreCircle'),
+        scoreTxt: document.getElementById('scoreText')
+    };
+
+    function init() {
+        // Generate Nav Grid
+        dom.grid.innerHTML = '';
+        questions.forEach((_, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'nav-btn';
+            btn.innerText = i + 1;
+            btn.onclick = () => loadQuestion(i);
+            btn.id = `nav-${i}`;
+            dom.grid.appendChild(btn);
+        });
+        
+        loadQuestion(0);
+        startTimer();
+    }
+
+    function loadQuestion(index) {
+        currentQ = index;
+        const q = questions[index];
+        
+        // Update Text
+        dom.text.innerHTML = `<strong>Q${index + 1}:</strong> ${q.t}`;
+        
+        // Update Options
+        dom.opts.innerHTML = '';
+        dom.expl.style.display = 'none';
+
+        q.o.forEach((opt, i) => {
+            const label = document.createElement('label');
+            label.className = 'option-label';
+            
+            // Logic for Review Mode vs Test Mode
+            if (reviewMode) {
+                // Determine styling
+                if (i === q.a) label.classList.add('correct-answer'); // Always highlight correct green
+                if (userAnswers[index] === i && i !== q.a) label.classList.add('wrong-answer'); // Highlight user wrong red
+                
+                // Content
+                label.innerHTML = `
+                    <span style="font-weight:bold; margin-right:10px;">${String.fromCharCode(65+i)}.</span>
+                    ${opt}
+                    ${i === q.a ? ' ✅' : ''}
+                    ${userAnswers[index] === i && i !== q.a ? ' ❌' : ''}
+                `;
+            } else {
+                // Test Mode
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'opt';
+                input.value = i;
+                if (userAnswers[index] === i) {
+                    input.checked = true;
+                    label.classList.add('selected');
+                }
+                
+                input.onchange = () => selectAnswer(index, i);
+
+                label.appendChild(input);
+                label.appendChild(document.createTextNode(opt));
+            }
+            
+            dom.opts.appendChild(label);
+        });
+
+        // Update Nav Grid Highlights
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`nav-${index}`).classList.add('active');
+
+        // Buttons
+        dom.prev.disabled = index === 0;
+        if (index === questions.length - 1) {
+            dom.next.style.display = 'none';
+            if (!reviewMode) dom.submit.style.display = 'inline-block';
+        } else {
+            dom.next.style.display = 'inline-block';
+            dom.submit.style.display = 'none';
+        }
+    }
+
+    function selectAnswer(qIndex, optIndex) {
+        userAnswers[qIndex] = optIndex;
+        
+        // Update Grid Color
+        const btn = document.getElementById(`nav-${qIndex}`);
+        btn.classList.add('answered');
+        
+        // Update Counter
+        const count = userAnswers.filter(a => a !== null).length;
+        dom.count.innerText = count;
+
+        // Visual update on current card
+        const labels = document.querySelectorAll('.option-label');
+        labels.forEach(l => l.classList.remove('selected'));
+        labels[optIndex].classList.add('selected');
+    }
+
+    function move(step) {
+        loadQuestion(currentQ + step);
+    }
+
+    function startTimer() {
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            let m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+            let s = (timeLeft % 60).toString().padStart(2, '0');
+            dom.timer.innerText = `${m}:${s}`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                submitTest();
+            }
+        }, 1000);
+    }
+
+    function submitTest() {
+        clearInterval(timerInterval);
+        let score = 0;
+        
+        questions.forEach((q, i) => {
+            if (userAnswers[i] === q.a) score++;
+        });
+
+        const pct = Math.round((score / 100) * 100);
+        dom.scoreCir.innerText = `${pct}%`;
+        dom.scoreTxt.innerText = `You scored ${score} out of 100`;
+        dom.modal.style.display = 'flex';
+        
+        // Enable Review Mode
+        reviewMode = true;
+    }
+
+    function closeModalAndReview() {
+        dom.modal.style.display = 'none';
+        dom.submit.style.display = 'none';
+        dom.review.style.display = 'inline-block'; // Show "Review Mode" indicator/button if needed, or just hide submit
+        
+        // Update Nav Grid for Review (Green/Red)
+        questions.forEach((q, i) => {
+            const btn = document.getElementById(`nav-${i}`);
+            btn.classList.remove('answered');
+            if (userAnswers[i] === q.a) {
+                btn.classList.add('correct-nav');
+            } else {
+                btn.classList.add('wrong-nav');
+            }
+        });
+
+        loadQuestion(0); // Go back to start
+    }
+
+    function startReview() {
+        // Just reload current question to ensure styling is applied if clicked manually
+        loadQuestion(currentQ);
+    }
+
+    // Start
+    init();
+
+</script>
+</body>
+</html>
